@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>RaceDayWeather – This Week’s NASCAR Weather</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="RaceDayWeather provides race-day weather forecasts, radar, and weather impact risk for NASCAR races." />
+
+  <!-- Correct path to CSS -->
+  <link rel="stylesheet" href="main.css" />
+</head>
+
+<body>
+
+<header class="site-header">
+  <h1>RaceDayWeather</h1>
+  <p>This weekend’s NASCAR race weather — at a glance</p>
+</header>
+
+<main class="dashboard">
+
+  <!-- THIS WEEK'S RACE -->
+  <section class="card race-info">
+    <h2 id="track-name">Daytona International Speedway</h2>
+    <p id="race-details">Daytona Beach, FL • Race Day: Sat Feb 14 2026</p>
+  </section>
+
+  <!-- WEATHER SNAPSHOT -->
+  <section class="card weather-grid">
+    <div class="weather-item">
+      <span class="label">Temperature</span>
+      <span id="temp" class="value">72°</span>
+    </div>
+    <div class="weather-item">
+      <span class="label">Rain Chance</span>
+      <span id="rain" class="value">10%</span>
+    </div>
+    <div class="weather-item">
+      <span class="label">Wind</span>
+      <span id="wind" class="value">5 mph</span>
+    </div>
+    <div class="weather-item">
+      <span class="label">Conditions</span>
+      <span id="conditions" class="value">Sunny</span>
+    </div>
+  </section>
+
+  <!-- RACE IMPACT -->
+  <section class="card impact-card">
+    <h2>Race Weather Impact</h2>
+    <div id="impact-meter" class="impact low">Likely Green</div>
+    <p class="impact-note">Based on forecast rain probability during race window</p>
+  </section>
+
+  <!-- RADAR -->
+  <section class="card">
+    <h2>Live Radar</h2>
+    <iframe
+      id="radar"
+      src="https://www.weather.com/weather/radar/interactive/l/Daytona+Beach+FL"
+      loading="lazy"
+      referrerpolicy="no-referrer-when-downgrade">
+    </iframe>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <p>© RaceDayWeather • Unofficial NASCAR Weather Resource</p>
+</footer>
+
+<script>
+/* ============================
+   CONFIG (Only edit your API key)
+=============================== */
+
+const OPENWEATHER_API_KEY = "PASTE_YOUR_API_KEY_HERE";
+
+/* Minimal NASCAR schedule */
+const races = [
+  {
+    track: "Daytona International Speedway",
+    city: "Daytona Beach, FL",
+    lat: 29.1852,
+    lon: -81.0705,
+    date: "2026-02-14"
+  },
+  {
+    track: "Atlanta Motor Speedway",
+    city: "Hampton, GA",
+    lat: 33.3853,
+    lon: -84.3176,
+    date: "2026-02-22"
+  }
+];
+
+/* ============================
+   LOGIC
+=============================== */
+
+function getNextRace() {
+  const today = new Date();
+  return races.find(r => new Date(r.date) >= today) || races[0];
+}
+
+function impactLevel(rain) {
+  if (rain < 20) return { text: "Likely Green", class: "low" };
+  if (rain < 40) return { text: "Weather Watch", class: "medium" };
+  return { text: "High Risk", class: "high" };
+}
+
+async function loadWeather(race) {
+  if (!OPENWEATHER_API_KEY || OPENWEATHER_API_KEY === "PASTE_YOUR_API_KEY_HERE") return;
+
+  const url = `https://api.openweathermap.org/data/2.5/onecall?lat=${race.lat}&lon=${race.lon}&units=imperial&exclude=minutely,hourly,alerts&appid=${OPENWEATHER_API_KEY}`;
+  const res = await fetch(url);
+  const data = await res.json();
+
+  const day = data.daily[0];
+  const rainChance = Math.round((day.pop || 0) * 100);
+
+  document.getElementById("temp").textContent = Math.round(day.temp.day) + "°";
+  document.getElementById("rain").textContent = rainChance + "%";
+  document.getElementById("wind").textContent = Math.round(day.wind_speed) + " mph";
+  document.getElementById("conditions").textContent = day.weather[0].main;
+
+  const impact = impactLevel(rainChance);
+  const meter = document.getElementById("impact-meter");
+  meter.textContent = impact.text;
+  meter.className = `impact ${impact.class}`;
+}
+
+function init() {
+  const race = getNextRace();
+
+  document.getElementById("track-name").textContent = race.track;
+  document.getElementById("race-details").textContent =
+    `${race.city} • Race Day: ${new Date(race.date).toDateString()}`;
+
+  document.getElementById("radar").src =
+    `https://www.weather.com/weather/radar/interactive/l/${race.city.replace(" ", "+")}`;
+
+  loadWeather(race);
+}
+
+init();
+</script>
+
+</body>
+</html>
